@@ -3,7 +3,7 @@ Parser for filter expressions.
 """
 import re
 import logging
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 from src.models.data_model import FilterExpression
 
@@ -197,6 +197,69 @@ class FilterParser:
             filter_blocks.append(match.group(1))
 
         return filter_blocks
+
+    def extract_named_filters(self, content: str) -> List[Tuple[str, str]]:
+        """
+        Extract named filter definitions (e.g., filter f_is_raw_xml{ ... };).
+        These are standalone filter definitions that can be referenced elsewhere.
+
+        Args:
+            content: Configuration file content
+
+        Returns:
+            List of (filter_name, filter_content) tuples
+        """
+        named_filters = []
+
+        # Pattern to find named filter definitions
+        pattern = re.compile(
+            r'filter\s+([\w\-]+)\s*\{',
+            re.IGNORECASE
+        )
+
+        for match in pattern.finditer(content):
+            filter_name = match.group(1)
+            start_pos = match.end() - 1  # Position of opening brace
+
+            # Extract content within balanced braces
+            filter_content = self._extract_balanced_braces(content, start_pos)
+
+            if filter_content:
+                named_filters.append((filter_name, filter_content))
+
+        return named_filters
+
+    def _extract_balanced_braces(self, content: str, start_pos: int) -> str:
+        """
+        Extract content within balanced braces starting at start_pos.
+
+        Args:
+            content: Full content string
+            start_pos: Position of opening brace
+
+        Returns:
+            Content within the balanced braces (excluding the braces themselves)
+        """
+        if start_pos >= len(content) or content[start_pos] != '{':
+            return ""
+
+        brace_count = 1
+        pos = start_pos + 1
+        start_content = pos
+
+        while pos < len(content) and brace_count > 0:
+            if content[pos] == '{':
+                brace_count += 1
+            elif content[pos] == '}':
+                brace_count -= 1
+            pos += 1
+
+        if brace_count == 0:
+            # Found matching closing brace
+            return content[start_content:pos-1]
+        else:
+            # Unbalanced braces
+            return ""
 
     def parse_inline_filter(self, filter_str: str) -> Optional[FilterExpression]:
         """

@@ -13,10 +13,10 @@ logger = logging.getLogger(__name__)
 class RewriteParser:
     """Parse rewrite blocks and extract metadata."""
 
-    # Pattern to match r_set_splunk_dest_default() calls - updated to handle nested parens
+    # Pattern to match r_set_splunk_dest_*() calls - handles default, update, and update_v2
     # This pattern finds the function name, then uses a helper method to extract the full call
     SPLUNK_DEST_START_PATTERN = re.compile(
-        r'r_set_splunk_dest_default\s*\(',
+        r'r_set_splunk_dest_(?:default|update(?:_v2)?)\s*\(',
         re.DOTALL
     )
 
@@ -43,7 +43,8 @@ class RewriteParser:
 
     def parse_r_set_splunk_dest_default(self, content: str) -> Metadata:
         """
-        Extract metadata from r_set_splunk_dest_default() call.
+        Extract metadata from r_set_splunk_dest_*() calls.
+        Supports: r_set_splunk_dest_default, r_set_splunk_dest_update, r_set_splunk_dest_update_v2
 
         Args:
             content: Content containing the function call
@@ -54,7 +55,7 @@ class RewriteParser:
         match = self.SPLUNK_DEST_START_PATTERN.search(content)
 
         if not match:
-            logger.debug("No r_set_splunk_dest_default found")
+            logger.debug("No r_set_splunk_dest function found")
             return Metadata()
 
         # Find matching closing parenthesis

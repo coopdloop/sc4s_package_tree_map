@@ -238,6 +238,7 @@ class FileFetcher:
     ) -> List[Tuple[str, str]]:
         """
         Fetch all parser configuration files from SC4S repository.
+        Automatically discovers all subdirectories under conflib/.
 
         Args:
             repo: Repository object
@@ -251,27 +252,50 @@ class FileFetcher:
         """
         all_files = []
 
-        # Directories to fetch
-        parser_dirs = [
-            f"{base_path}/conflib/syslog",
-            f"{base_path}/conflib/json",
-            f"{base_path}/conflib/cef",
-            f"{base_path}/conflib/leef",
-            f"{base_path}/conflib/raw",
-            f"{base_path}/sources",
-        ]
+        # Get all subdirectories in conflib
+        conflib_path = f"{base_path}/conflib"
+        logger.info(f"Discovering subdirectories in {conflib_path}")
+
+        try:
+            contents = repo.get_contents(conflib_path, ref=ref)
+            conflib_dirs = [
+                f"{conflib_path}/{item.name}"
+                for item in contents
+                if item.type == "dir"
+            ]
+            logger.info(f"Found {len(conflib_dirs)} subdirectories in conflib/")
+        except Exception as e:
+            logger.warning(f"Failed to list conflib directories: {e}, falling back to known directories")
+            # Fallback to known directories
+            conflib_dirs = [
+                f"{conflib_path}/syslog",
+                f"{conflib_path}/json",
+                f"{conflib_path}/cef",
+                f"{conflib_path}/leef",
+                f"{conflib_path}/raw",
+                f"{conflib_path}/cisco-syslog",
+                f"{conflib_path}/almost-syslog",
+                f"{conflib_path}/netsource",
+            ]
+
+        # Add sources directory
+        parser_dirs = conflib_dirs + [f"{base_path}/sources"]
 
         for parser_dir in parser_dirs:
             logger.info(f"Fetching parsers from: {parser_dir}")
-            files = self.fetch_directory(
-                repo,
-                parser_dir,
-                ref,
-                file_extension=".conf",
-                use_cache=use_cache,
-                force_refresh=force_refresh
-            )
-            all_files.extend(files)
+            try:
+                files = self.fetch_directory(
+                    repo,
+                    parser_dir,
+                    ref,
+                    file_extension=".conf",
+                    use_cache=use_cache,
+                    force_refresh=force_refresh
+                )
+                all_files.extend(files)
+            except Exception as e:
+                logger.warning(f"Failed to fetch from {parser_dir}: {e}")
+                continue
 
         logger.info(f"Total parser files fetched: {len(all_files)}")
         return all_files

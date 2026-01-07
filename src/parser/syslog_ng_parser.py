@@ -4,9 +4,10 @@ Main parser for syslog-ng configuration files.
 import logging
 from typing import List, Tuple, Optional
 
-from src.models.data_model import ParserDefinition, Application
+from src.models.data_model import ParserDefinition, Application, NamedFilter
 from .block_parser import BlockParser
 from .application_parser import ApplicationParser
+from .filter_parser import FilterParser
 
 logger = logging.getLogger(__name__)
 
@@ -20,6 +21,7 @@ class SyslogNgParser:
     def __init__(self):
         self.block_parser = BlockParser()
         self.application_parser = ApplicationParser()
+        self.filter_parser = FilterParser()
 
     def parse_file(
         self,
@@ -45,15 +47,19 @@ class SyslogNgParser:
             # Extract applications
             applications = self.application_parser.extract_applications(content)
 
+            # Extract named filters (standalone filter definitions)
+            named_filters_raw = self.filter_parser.extract_named_filters(content)
+
             # Build parser definitions
             parser_defs = self._build_parser_definitions(
                 file_path,
                 block_parsers,
                 applications,
+                named_filters_raw,
                 content if extract_raw else None
             )
 
-            logger.info(f"Parsed {file_path}: {len(parser_defs)} parsers, {len(applications)} applications")
+            logger.info(f"Parsed {file_path}: {len(parser_defs)} parsers, {len(applications)} applications, {len(named_filters_raw)} named filters")
             return parser_defs
 
         except Exception as e:
@@ -71,6 +77,7 @@ class SyslogNgParser:
         file_path: str,
         block_parsers: List[Tuple[str, str]],
         applications: List[Tuple[str, str, str]],
+        named_filters_raw: List[Tuple[str, str]],
         raw_content: Optional[str]
     ) -> List[ParserDefinition]:
         """
@@ -80,12 +87,23 @@ class SyslogNgParser:
             file_path: Path to the configuration file
             block_parsers: List of (parser_name, parser_content) tuples
             applications: List of (app_name, app_type, app_content) tuples
+            named_filters_raw: List of (filter_name, filter_content) tuples
             raw_content: Optional raw file content
 
         Returns:
             List of ParserDefinition objects
         """
         parser_defs = []
+
+        # Parse named filters
+        named_filters = []
+        for filter_name, filter_content in named_filters_raw:
+            filters = self.filter_parser.parse_filter_block(filter_content)
+            named_filters.append(NamedFilter(
+                name=filter_name,
+                filters=filters,
+                raw_content=filter_content
+            ))
 
         # Parse each block parser
         for parser_name, parser_content in block_parsers:
@@ -110,6 +128,7 @@ class SyslogNgParser:
                 applications=matching_apps,
                 nested_parsers=nested_parsers,
                 conditional_rewrites=conditional_rewrites,
+                named_filters=named_filters,
                 raw_config=raw_content
             )
 
@@ -127,7 +146,8 @@ class SyslogNgParser:
                 name=app_name,
                 parser_type="reference",  # Indicates this references a parser from another file
                 file_path=file_path,
-                applications=[app]
+                applications=[app],
+                named_filters=named_filters
             )
 
             parser_defs.append(parser_def)

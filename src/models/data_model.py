@@ -58,6 +58,21 @@ class ConditionalRewrite:
 
 
 @dataclass
+class NamedFilter:
+    """A named filter definition (e.g., filter f_is_raw_xml{ tags(...); })."""
+    name: str
+    filters: List[FilterExpression] = field(default_factory=list)
+    raw_content: Optional[str] = None
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary."""
+        return {
+            "name": self.name,
+            "filters": [f.to_dict() for f in self.filters]
+        }
+
+
+@dataclass
 class Application:
     """An application block that links filters to parsers."""
     name: str
@@ -85,6 +100,7 @@ class ParserDefinition:
     applications: List[Application] = field(default_factory=list)
     nested_parsers: List[str] = field(default_factory=list)  # csv-parser, kv-parser, etc.
     conditional_rewrites: List[ConditionalRewrite] = field(default_factory=list)
+    named_filters: List[NamedFilter] = field(default_factory=list)  # Standalone filter definitions
     raw_config: Optional[str] = None
     parse_error: Optional[str] = None
 
@@ -103,6 +119,9 @@ class ParserDefinition:
 
         if self.conditional_rewrites:
             result["conditional_rewrites"] = [cr.to_dict() for cr in self.conditional_rewrites]
+
+        if self.named_filters:
+            result["named_filters"] = [nf.to_dict() for nf in self.named_filters]
 
         if self.parse_error:
             result["parse_error"] = self.parse_error
