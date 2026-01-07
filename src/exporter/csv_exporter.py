@@ -103,6 +103,9 @@ class CSVExporter:
         # Calculate rewrite information
         has_rewrites, rewrite_count = CSVExporter.calculate_rewrite_info(parser)
 
+        # Extract ALL metadata values (base + conditional rewrites)
+        all_metadata = CSVExporter.extract_all_metadata(parser)
+
         # Extract filter patterns
         filter_programs = CSVExporter.extract_filters(parser, 'program')
         filter_messages = CSVExporter.extract_filters(parser, 'message')
@@ -121,10 +124,10 @@ class CSVExporter:
             'file_path': parser.file_path,
             'has_rewrites': 'true' if has_rewrites else 'false',
             'rewrite_count': str(rewrite_count),
-            'index': parser.metadata.index or '',
-            'sourcetype': parser.metadata.sourcetype or '',
-            'template': parser.metadata.template or '',
-            'class': parser.metadata.class_ or '',
+            'index': all_metadata['index'],
+            'sourcetype': all_metadata['sourcetype'],
+            'template': all_metadata['template'],
+            'class': all_metadata['class'],
             'conditional_rewrites': str(len(parser.conditional_rewrites)),
             'filter_programs': filter_programs,
             'filter_messages': filter_messages,
@@ -167,6 +170,54 @@ class CSVExporter:
         has_rewrites = rewrite_count > 0
 
         return has_rewrites, rewrite_count
+
+    @staticmethod
+    def extract_all_metadata(parser: ParserDefinition) -> Dict[str, str]:
+        """
+        Extract all metadata values from parser (base + conditional rewrites).
+
+        Collects all unique values for index, sourcetype, template, and class
+        from both the base metadata and all conditional rewrites.
+
+        Args:
+            parser: ParserDefinition object
+
+        Returns:
+            Dictionary with semicolon-separated metadata values
+        """
+        indexes = set()
+        sourcetypes = set()
+        templates = set()
+        classes = set()
+
+        # Add base metadata
+        if parser.metadata.index:
+            indexes.add(parser.metadata.index)
+        if parser.metadata.sourcetype:
+            sourcetypes.add(parser.metadata.sourcetype)
+        if parser.metadata.template:
+            templates.add(parser.metadata.template)
+        if parser.metadata.class_:
+            classes.add(parser.metadata.class_)
+
+        # Add metadata from conditional rewrites
+        for cond_rewrite in parser.conditional_rewrites:
+            if cond_rewrite.metadata.index:
+                indexes.add(cond_rewrite.metadata.index)
+            if cond_rewrite.metadata.sourcetype:
+                sourcetypes.add(cond_rewrite.metadata.sourcetype)
+            if cond_rewrite.metadata.template:
+                templates.add(cond_rewrite.metadata.template)
+            if cond_rewrite.metadata.class_:
+                classes.add(cond_rewrite.metadata.class_)
+
+        # Join with semicolons, sort for consistency
+        return {
+            'index': ';'.join(sorted(indexes)) if indexes else '',
+            'sourcetype': ';'.join(sorted(sourcetypes)) if sourcetypes else '',
+            'template': ';'.join(sorted(templates)) if templates else '',
+            'class': ';'.join(sorted(classes)) if classes else ''
+        }
 
     @staticmethod
     def extract_filters(parser: ParserDefinition, filter_type: str) -> str:

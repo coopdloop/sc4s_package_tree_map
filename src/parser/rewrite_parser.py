@@ -13,9 +13,10 @@ logger = logging.getLogger(__name__)
 class RewriteParser:
     """Parse rewrite blocks and extract metadata."""
 
-    # Pattern to match r_set_splunk_dest_default() calls
-    SPLUNK_DEST_PATTERN = re.compile(
-        r'r_set_splunk_dest_default\s*\((.*?)\)',
+    # Pattern to match r_set_splunk_dest_default() calls - updated to handle nested parens
+    # This pattern finds the function name, then uses a helper method to extract the full call
+    SPLUNK_DEST_START_PATTERN = re.compile(
+        r'r_set_splunk_dest_default\s*\(',
         re.DOTALL
     )
 
@@ -50,13 +51,19 @@ class RewriteParser:
         Returns:
             Metadata object with extracted fields
         """
-        match = self.SPLUNK_DEST_PATTERN.search(content)
+        match = self.SPLUNK_DEST_START_PATTERN.search(content)
 
         if not match:
             logger.debug("No r_set_splunk_dest_default found")
             return Metadata()
 
-        body = match.group(1)
+        # Find matching closing parenthesis
+        start_pos = match.end()
+        body = self._extract_balanced_parens(content, start_pos - 1)
+
+        if not body:
+            logger.debug("Could not extract balanced parentheses")
+            return Metadata()
 
         # Extract all field(value) pairs
         fields = {}
@@ -73,6 +80,38 @@ class RewriteParser:
             template=fields.get('template'),
             class_=fields.get('class')
         )
+
+    def _extract_balanced_parens(self, content: str, start_pos: int) -> str:
+        """
+        Extract content within balanced parentheses starting at start_pos.
+
+        Args:
+            content: Full content string
+            start_pos: Position of opening parenthesis
+
+        Returns:
+            Content within the balanced parentheses (excluding the parens themselves)
+        """
+        if start_pos >= len(content) or content[start_pos] != '(':
+            return ""
+
+        paren_count = 1
+        pos = start_pos + 1
+        start_content = pos
+
+        while pos < len(content) and paren_count > 0:
+            if content[pos] == '(':
+                paren_count += 1
+            elif content[pos] == ')':
+                paren_count -= 1
+            pos += 1
+
+        if paren_count == 0:
+            # Found matching closing paren
+            return content[start_content:pos-1]
+        else:
+            # Unbalanced parentheses
+            return ""
 
     def extract_rewrite_blocks(self, content: str) -> List[str]:
         """

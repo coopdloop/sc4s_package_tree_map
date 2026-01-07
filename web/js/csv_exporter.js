@@ -76,6 +76,9 @@ class CSVExporter {
         // Calculate rewrite info
         const { hasRewrites, rewriteCount } = this.calculateRewriteInfo(parser);
 
+        // Extract ALL metadata values (base + conditional rewrites)
+        const allMetadata = this.extractAllMetadata(parser);
+
         // Extract filters
         const filterPrograms = this.extractFilters(parser, 'program');
         const filterMessages = this.extractFilters(parser, 'message');
@@ -97,10 +100,10 @@ class CSVExporter {
             file_path: parser.file_path || '',
             has_rewrites: hasRewrites ? 'true' : 'false',
             rewrite_count: String(rewriteCount),
-            index: parser.metadata?.index || '',
-            sourcetype: parser.metadata?.sourcetype || '',
-            template: parser.metadata?.template || '',
-            class: parser.metadata?.class_ || '',
+            index: allMetadata.index,
+            sourcetype: allMetadata.sourcetype,
+            template: allMetadata.template,
+            class: allMetadata.class,
             conditional_rewrites: String(parser.conditional_rewrites?.length || 0),
             filter_programs: filterPrograms,
             filter_messages: filterMessages,
@@ -142,6 +145,58 @@ class CSVExporter {
         return {
             hasRewrites: rewriteCount > 0,
             rewriteCount: rewriteCount
+        };
+    }
+
+    /**
+     * Extract all metadata values from parser (base + conditional rewrites)
+     * @param {Object} parser - Parser definition
+     * @returns {Object} Object with semicolon-separated metadata values
+     */
+    extractAllMetadata(parser) {
+        const indexes = new Set();
+        const sourcetypes = new Set();
+        const templates = new Set();
+        const classes = new Set();
+
+        // Add base metadata
+        if (parser.metadata?.index) {
+            indexes.add(parser.metadata.index);
+        }
+        if (parser.metadata?.sourcetype) {
+            sourcetypes.add(parser.metadata.sourcetype);
+        }
+        if (parser.metadata?.template) {
+            templates.add(parser.metadata.template);
+        }
+        if (parser.metadata?.class_) {
+            classes.add(parser.metadata.class_);
+        }
+
+        // Add metadata from conditional rewrites
+        if (parser.conditional_rewrites) {
+            parser.conditional_rewrites.forEach(condRewrite => {
+                if (condRewrite.metadata?.index) {
+                    indexes.add(condRewrite.metadata.index);
+                }
+                if (condRewrite.metadata?.sourcetype) {
+                    sourcetypes.add(condRewrite.metadata.sourcetype);
+                }
+                if (condRewrite.metadata?.template) {
+                    templates.add(condRewrite.metadata.template);
+                }
+                if (condRewrite.metadata?.class_) {
+                    classes.add(condRewrite.metadata.class_);
+                }
+            });
+        }
+
+        // Join with semicolons, sort for consistency
+        return {
+            index: indexes.size > 0 ? Array.from(indexes).sort().join(';') : '',
+            sourcetype: sourcetypes.size > 0 ? Array.from(sourcetypes).sort().join(';') : '',
+            template: templates.size > 0 ? Array.from(templates).sort().join(';') : '',
+            class: classes.size > 0 ? Array.from(classes).sort().join(';') : ''
         };
     }
 
