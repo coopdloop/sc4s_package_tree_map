@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SC4S Parser Tree Visualizer</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <nav class="navbar navbar-dark bg-dark">
+        <div class="container-fluid">
+            <span class="navbar-brand mb-0 h1">
+                <i class="bi bi-diagram-3"></i> SC4S Parser Tree Visualizer
+            </span>
+            <div class="d-flex align-items-center">
+                <div class="position-relative me-2" style="width: 300px;">
+                    <input type="text" id="search" class="form-control" placeholder="Search parsers..." autocomplete="off">
+                    <div id="autocomplete-dropdown" class="autocomplete-dropdown"></div>
+                </div>
+                <select id="view-mode" class="form-select me-2" style="width: 200px;">
+                    <option value="vendor">By Vendor</option>
+                    <option value="type">By Parser Type</option>
+                    <option value="index">By Index</option>
+                </select>
+                <select id="layout-mode" class="form-select me-2" style="width: 200px;">
+                    <option value="tree">Tree Layout</option>
+                    <option value="radial">Radial Tree</option>
+                    <option value="force">Force Graph</option>
+                </select>
+                <button id="expand-all" class="btn btn-sm btn-outline-light me-1" title="Expand All">
+                    <i class="bi bi-arrows-expand"></i>
+                </button>
+                <button id="collapse-all" class="btn btn-sm btn-outline-light me-1" title="Collapse All">
+                    <i class="bi bi-arrows-collapse"></i>
+                </button>
+                <button id="export-csv" class="btn btn-sm btn-outline-light" title="Export to CSV">
+                    <i class="bi bi-download"></i> CSV
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid mt-3">
+        <div class="row">
+            <!-- Tree Container -->
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-body p-0">
+                        <div id="tree-container" style="min-height: 600px; overflow: auto;">
+                            <!-- Tree visualization will be rendered here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Search Results (hidden initially) -->
+                <div id="search-results" class="mt-3 card" style="display: none;">
+                    <!-- Search results will be displayed here -->
+                </div>
+            </div>
+
+            <!-- Detail Panel -->
+            <div class="col-md-4">
+                <div id="detail-panel">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5><i class="bi bi-info-circle"></i> Parser Details</h5>
+                        </div>
+                        <div class="card-body">
+                            <p class="text-muted">Click on a parser node to view details</p>
+                            <p class="text-muted small">Details will include:</p>
+                            <ul class="small text-muted">
+                                <li>Parser name and file path</li>
+                                <li>Metadata (index, sourcetype, vendor, product)</li>
+                                <li>Filter patterns</li>
+                                <li>Conditional rewrites</li>
+                                <li>Link to GitHub source</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="fixed-bottom bg-light border-top py-2">
+        <div class="container-fluid">
+            <div class="row text-muted small align-items-center">
+                <div class="col-md-3">
+                    <i class="bi bi-building"></i> <span id="total-vendors">Vendors: --</span>
+                </div>
+                <div class="col-md-3">
+                    <i class="bi bi-box"></i> <span id="total-parsers">Parsers: --</span>
+                </div>
+                <div class="col-md-3">
+                    <i class="bi bi-github"></i> <a href="https://github.com/splunk/splunk-connect-for-syslog" target="_blank" class="text-muted">SC4S Repository</a>
+                </div>
+                <div class="col-md-3 text-end">
+                    <i class="bi bi-clock"></i> <span id="last-updated">Last updated: --</span>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/fuse.js@7.0.0"></script>
+    <script src="js/data_loader.js"></script>
+    <script src="js/tree_visualizer.js"></script>
+    <script src="js/detail_panel.js"></script>
+    <script src="js/search.js"></script>
+    <script src="js/csv_exporter.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>

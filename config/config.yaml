@@ -1,0 +1,26 @@
+github:
+  repository: "splunk/splunk-connect-for-syslog"
+  branch: "main"
+  base_path: "package/etc/conf.d"
+  token_env: "GITHUB_TOKEN"
+
+scraper:
+  cache_dir: "data/cache"
+  cache_ttl_hours: 24
+  parallel_downloads: 5
+  rate_limit_buffer: 10
+
+parser:
+  strict_mode: false
+  extract_raw_config: true
+
+output:
+  file: "data/parsed/sc4s_tree.json"
+  format: "json"
+  pretty_print: true
+  include_metadata: true
+
+logging:
+  level: "INFO"
+  file: "data/logs/scraper.log"
+  console: true
