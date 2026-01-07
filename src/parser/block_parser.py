@@ -14,10 +14,10 @@ logger = logging.getLogger(__name__)
 class BlockParser:
     """Parse 'block parser' definitions from syslog-ng configuration."""
 
-    # Pattern to match block parser definitions
-    BLOCK_PARSER_PATTERN = re.compile(
-        r'block\s+parser\s+([\w\-]+)\s*\(\s*\)\s*\{(.*?)\n\s*\};',
-        re.DOTALL | re.IGNORECASE
+    # Pattern to find the start of block parser definitions
+    BLOCK_PARSER_START_PATTERN = re.compile(
+        r'block\s+parser\s+([\w\-]+)\s*\(\s*\)\s*\{',
+        re.IGNORECASE
     )
 
     # Pattern to extract nested parser calls
@@ -31,7 +31,7 @@ class BlockParser:
 
     def extract_block_parsers(self, content: str) -> List[Tuple[str, str]]:
         """
-        Extract all block parser definitions from content.
+        Extract all block parser definitions from content using balanced brace matching.
 
         Args:
             content: Configuration file content
@@ -41,13 +41,50 @@ class BlockParser:
         """
         parsers = []
 
-        for match in self.BLOCK_PARSER_PATTERN.finditer(content):
+        for match in self.BLOCK_PARSER_START_PATTERN.finditer(content):
             parser_name = match.group(1)
-            parser_content = match.group(2)
-            parsers.append((parser_name, parser_content))
+            start_pos = match.end() - 1  # Position of opening brace
+
+            # Extract content within balanced braces
+            parser_content = self._extract_balanced_braces(content, start_pos)
+
+            if parser_content:
+                parsers.append((parser_name, parser_content))
 
         logger.debug(f"Found {len(parsers)} block parser definitions")
         return parsers
+
+    def _extract_balanced_braces(self, content: str, start_pos: int) -> str:
+        """
+        Extract content within balanced braces starting at start_pos.
+
+        Args:
+            content: Full content string
+            start_pos: Position of opening brace
+
+        Returns:
+            Content within the balanced braces (excluding the braces themselves)
+        """
+        if start_pos >= len(content) or content[start_pos] != '{':
+            return ""
+
+        brace_count = 1
+        pos = start_pos + 1
+        start_content = pos
+
+        while pos < len(content) and brace_count > 0:
+            if content[pos] == '{':
+                brace_count += 1
+            elif content[pos] == '}':
+                brace_count -= 1
+            pos += 1
+
+        if brace_count == 0:
+            # Found matching closing brace
+            return content[start_content:pos-1]
+        else:
+            # Unbalanced braces
+            return ""
 
     def parse_block_parser(
         self,
